@@ -5,6 +5,7 @@ import com.techschool.pcbook.pb.*;
 
 import java.time.Instant;
 import java.util.Random;
+import java.util.UUID;
 
 public class Generator {
     private Random rand;
@@ -119,6 +120,7 @@ public class Generator {
         int releaseYear = randomInt(2015, 2022);
 
         return Laptop.newBuilder()
+                .setId(randomID())
                 .setBrand(brand)
                 .setName(name)
                 .setCpu(NewCPU())
@@ -230,6 +232,11 @@ public class Generator {
 
     private float randomFloat(float min, float max) {
         return min + rand.nextFloat() * (max - min);
+    }
+
+    private String randomID() {
+        UUID uuid = UUID.randomUUID();
+        return uuid.toString();
     }
 
     private Timestamp timestampNow() {
