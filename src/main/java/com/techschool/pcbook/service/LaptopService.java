@@ -45,11 +45,11 @@ public class LaptopService extends LaptopServiceGrpc.LaptopServiceImplBase {
         }
 
         // heavy processing
-        try {
-            TimeUnit.SECONDS.sleep(3);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+//        try {
+//            TimeUnit.SECONDS.sleep(3);
+//        } catch (InterruptedException e) {
+//            e.printStackTrace();
+//        }
 
         if (Context.current().isCancelled()) {
             logger.info("request is cancelled");
