@@ -4,10 +4,12 @@ import com.techschool.pcbook.pb.CreateLaptopRequest;
 import com.techschool.pcbook.pb.CreateLaptopResponse;
 import com.techschool.pcbook.pb.Laptop;
 import com.techschool.pcbook.pb.LaptopServiceGrpc;
+import io.grpc.Context;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 public class LaptopService extends LaptopServiceGrpc.LaptopServiceImplBase {
@@ -40,6 +42,23 @@ public class LaptopService extends LaptopServiceGrpc.LaptopServiceImplBase {
                 );
                 return;
             }
+        }
+
+        // heavy processing
+        try {
+            TimeUnit.SECONDS.sleep(3);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        if (Context.current().isCancelled()) {
+            logger.info("request is cancelled");
+            responseStreamObserver.onError(
+                    Status.CANCELLED
+                            .withDescription("request is cancelled")
+                            .asRuntimeException()
+            );
+            return;
         }
 
         Laptop other = laptop.toBuilder().setId(uuid.toString()).build();

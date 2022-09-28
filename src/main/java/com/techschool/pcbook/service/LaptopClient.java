@@ -38,7 +38,8 @@ public class LaptopClient {
         CreateLaptopResponse response = CreateLaptopResponse.getDefaultInstance();
 
         try {
-            response = blockingStub.createLaptop(request);
+//            response = blockingStub.createLaptop(request);
+            response = blockingStub.withDeadlineAfter(2, TimeUnit.SECONDS).createLaptop(request);
         } catch (StatusRuntimeException e) {
             if (e.getStatus().getCode() == Status.Code.ALREADY_EXISTS) {
                 // not a big deal
