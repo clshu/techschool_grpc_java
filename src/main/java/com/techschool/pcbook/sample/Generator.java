@@ -124,7 +124,7 @@ public class Generator {
                 .setBrand(brand)
                 .setName(name)
                 .setCpu(NewCPU())
-                .setMemory(NewRAM())
+                .setRam(NewRAM())
                 .addGpu(NewGPU())
                 .addStorage(NewSSD())
                 .addStorage(NewHDD())
