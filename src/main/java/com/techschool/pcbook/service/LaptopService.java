@@ -1,15 +1,13 @@
 package com.techschool.pcbook.service;
 
-import com.techschool.pcbook.pb.CreateLaptopRequest;
-import com.techschool.pcbook.pb.CreateLaptopResponse;
-import com.techschool.pcbook.pb.Laptop;
-import com.techschool.pcbook.pb.LaptopServiceGrpc;
+import com.techschool.pcbook.pb.*;
 import io.grpc.Context;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Filter;
 import java.util.logging.Logger;
 
 public class LaptopService extends LaptopServiceGrpc.LaptopServiceImplBase {
@@ -86,5 +84,24 @@ public class LaptopService extends LaptopServiceGrpc.LaptopServiceImplBase {
         responseStreamObserver.onCompleted();
 
         logger.info("saved laptop with ID: " + other.getId());
+    }
+
+
+    @Override
+    public void searchLaptop(SearchLaptopRequest request, StreamObserver<SearchLaptopResponse> responseStreamObserver) {
+        LaptopFilter filter = request.getFilter();
+        logger.info("get a search-laptop request with filter:\n" + filter);
+
+        store.Search(filter, new LaptopStream() {
+            @Override
+            public void Send(Laptop laptop) {
+                logger.info("found laptop with ID: " + laptop.getId());
+                SearchLaptopResponse response = SearchLaptopResponse.newBuilder().setLaptop(laptop).build();
+                responseStreamObserver.onNext(response);
+            }
+        });
+
+        responseStreamObserver.onCompleted();
+        logger.info("search laptop completed");
     }
 }

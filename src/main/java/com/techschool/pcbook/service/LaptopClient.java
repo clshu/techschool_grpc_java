@@ -1,9 +1,6 @@
 package com.techschool.pcbook.service;
 
-import com.techschool.pcbook.pb.CreateLaptopRequest;
-import com.techschool.pcbook.pb.CreateLaptopResponse;
-import com.techschool.pcbook.pb.Laptop;
-import com.techschool.pcbook.pb.LaptopServiceGrpc;
+import com.techschool.pcbook.pb.*;
 import com.techschool.pcbook.pb.LaptopServiceGrpc.LaptopServiceBlockingStub ;
 import com.techschool.pcbook.sample.Generator;
 import io.grpc.ManagedChannel;
@@ -11,6 +8,7 @@ import io.grpc.ManagedChannelBuilder;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 
+import java.util.Iterator;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -56,14 +54,48 @@ public class LaptopClient {
         logger.info("laptop create with ID:" + response.getId());
     }
 
+    private void SearchLaptop(LaptopFilter filter) {
+        logger.info("search started");
+
+        SearchLaptopRequest request = SearchLaptopRequest.newBuilder().setFilter(filter).build();
+        Iterator<SearchLaptopResponse> responseIterator = blockingStub.searchLaptop(request);
+        while (responseIterator.hasNext()) {
+            SearchLaptopResponse response = responseIterator.next();
+            Laptop laptop = response.getLaptop();
+            logLaptop(laptop);
+        }
+        logger.info("search completed");
+    }
+
+    private void logLaptop(Laptop laptop) {
+        logger.info("_ found: " + laptop.getId());
+        // May log more info later
+    }
+
     public static void main(String[] args) {
         LaptopClient client = new LaptopClient("localhost", 50051);
 
         Generator generator = new Generator();
-        Laptop laptop = generator.NewLaptop().toBuilder().setId("").build();
 
         try {
-            client.createLaptop(laptop);
+            for (int i = 0; i < 10; i++) {
+                Laptop laptop = generator.NewLaptop();
+                client.createLaptop(laptop);
+            }
+
+            Memory minRam = Memory.newBuilder()
+                    .setValue(8)
+                    .setUnit(Memory.Unit.GIGABYTE)
+                    .build();
+
+            LaptopFilter filter = LaptopFilter.newBuilder()
+                    .setMaxPriceUsd(3000)
+                    .setMinCpuCores(4)
+                    .setMinCpuGhz(2.5)
+                    .setMinRam(minRam)
+                    .build();
+
+            client.SearchLaptop(filter);
         } finally {
             try {
                 client.shutdown();
