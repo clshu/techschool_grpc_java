@@ -46,11 +46,11 @@ public class InMemoryLaptopStore  implements  LaptopStore {
                 return;
             }
             // Heavy load simulation
-            try {
-                TimeUnit.SECONDS.sleep(1);
-            } catch (InterruptedException e)  {
-                e.printStackTrace();
-            }
+//            try {
+//                TimeUnit.SECONDS.sleep(1);
+//            } catch (InterruptedException e)  {
+//                e.printStackTrace();
+//            }
             Laptop laptop = entry.getValue();
             if (isQualified(filter, laptop)) {
                 stream.Send(laptop.toBuilder().build());
