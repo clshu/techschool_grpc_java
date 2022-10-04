@@ -4,11 +4,15 @@ import com.techschool.pcbook.pb.Laptop;
 import com.techschool.pcbook.pb.LaptopFilter;
 import com.techschool.pcbook.pb.Memory;
 
+import io.grpc.Context;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 
 public class InMemoryLaptopStore  implements  LaptopStore {
+    private static final Logger logger = Logger.getLogger(InMemoryLaptopStore.class.getName());
     private ConcurrentMap<String, Laptop> data;
 
     public InMemoryLaptopStore() {
@@ -35,8 +39,18 @@ public class InMemoryLaptopStore  implements  LaptopStore {
     }
 
     @Override
-    public void Search(LaptopFilter filter, LaptopStream stream) {
+    public void Search(Context ctx, LaptopFilter filter, LaptopStream stream) {
         for (Map.Entry<String, Laptop> entry: data.entrySet()) {
+            if (ctx.isCancelled()) {
+                logger.info("context is cancelled");
+                return;
+            }
+            // Heavy load simulation
+            try {
+                TimeUnit.SECONDS.sleep(1);
+            } catch (InterruptedException e)  {
+                e.printStackTrace();
+            }
             Laptop laptop = entry.getValue();
             if (isQualified(filter, laptop)) {
                 stream.Send(laptop.toBuilder().build());

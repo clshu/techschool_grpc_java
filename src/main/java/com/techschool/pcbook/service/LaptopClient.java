@@ -58,11 +58,18 @@ public class LaptopClient {
         logger.info("search started");
 
         SearchLaptopRequest request = SearchLaptopRequest.newBuilder().setFilter(filter).build();
-        Iterator<SearchLaptopResponse> responseIterator = blockingStub.searchLaptop(request);
-        while (responseIterator.hasNext()) {
-            SearchLaptopResponse response = responseIterator.next();
-            Laptop laptop = response.getLaptop();
-            logLaptop(laptop);
+        try {
+            Iterator<SearchLaptopResponse> responseIterator = blockingStub
+                    .withDeadlineAfter(5, TimeUnit.SECONDS)
+                    .searchLaptop(request);
+            while (responseIterator.hasNext()) {
+                SearchLaptopResponse response = responseIterator.next();
+                Laptop laptop = response.getLaptop();
+                logLaptop(laptop);
+            }
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "request failed: " + e.getMessage());
+            return;
         }
         logger.info("search completed");
     }

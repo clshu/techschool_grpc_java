@@ -6,8 +6,6 @@ import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-import java.util.logging.Filter;
 import java.util.logging.Logger;
 
 public class LaptopService extends LaptopServiceGrpc.LaptopServiceImplBase {
@@ -92,7 +90,7 @@ public class LaptopService extends LaptopServiceGrpc.LaptopServiceImplBase {
         LaptopFilter filter = request.getFilter();
         logger.info("get a search-laptop request with filter:\n" + filter);
 
-        store.Search(filter, new LaptopStream() {
+        store.Search(Context.current(), filter, new LaptopStream() {
             @Override
             public void Send(Laptop laptop) {
                 logger.info("found laptop with ID: " + laptop.getId());
