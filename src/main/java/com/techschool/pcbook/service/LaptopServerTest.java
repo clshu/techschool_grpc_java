@@ -22,7 +22,8 @@ public class LaptopServerTest {
     @Rule
     public final GrpcCleanupRule grpcCleanup = new GrpcCleanupRule();
 
-    private LaptopStore store;
+    private LaptopStore laptopStore;
+    private  ImageStore imageStore;
     private LaptopServer server;
     private ManagedChannel channel;
 
@@ -31,8 +32,8 @@ public class LaptopServerTest {
         String serverName = InProcessServerBuilder.generateName();
         InProcessServerBuilder serverBuilder = InProcessServerBuilder.forName(serverName).directExecutor();
 
-        store = new InMemoryLaptopStore();
-        server = new LaptopServer(serverBuilder, 0, store);
+        laptopStore = new InMemoryLaptopStore();
+        server = new LaptopServer(serverBuilder, 0, laptopStore, imageStore);
         server.start();
 
         channel = grpcCleanup.register(
@@ -56,7 +57,7 @@ public class LaptopServerTest {
         assertNotNull(response);
         assertEquals(response.getId(), laptop.getId());
 
-        Laptop found = store.Find(response.getId());
+        Laptop found = laptopStore.Find(response.getId());
         assertNotNull(found);
     }
 
@@ -71,7 +72,7 @@ public class LaptopServerTest {
         assertNotNull(response);
         assertFalse(response.getId().isEmpty());
 
-        Laptop found = store.Find(response.getId());
+        Laptop found = laptopStore.Find(response.getId());
         assertNotNull(found);
     }
 
@@ -105,7 +106,7 @@ public class LaptopServerTest {
         Generator generator = new Generator();
         Laptop laptop = generator.NewLaptop();
         try {
-            store.Save(laptop);
+            laptopStore.Save(laptop);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

@@ -45,3 +45,5 @@ bin/
 ### generated from tests ###
 laptop.bin
 laptop.json
+img/
+tmp/
