@@ -111,6 +111,7 @@ public class LaptopService extends LaptopServiceGrpc.LaptopServiceImplBase {
     @Override
     public StreamObserver<UploadImageRequest> uploadImage(StreamObserver<UploadImageResponse> responseObserver) {
         return new StreamObserver<UploadImageRequest>() {
+            private static final long maxImageSize = 1 << 20;
             private String laptopID;
             private String imageType;
             private ByteArrayOutputStream imageData;
@@ -136,6 +137,17 @@ public class LaptopService extends LaptopServiceGrpc.LaptopServiceImplBase {
                     responseObserver.onError(
                             Status.INVALID_ARGUMENT
                                     .withDescription("image info wasn't sent before")
+                                    .asRuntimeException()
+                    );
+                    return;
+                }
+
+                long size = imageData.size() + chunkData.size();
+                if (size > maxImageSize) {
+                    logger.info("image size is too large: " + size);
+                    responseObserver.onError(
+                            Status.INVALID_ARGUMENT
+                                    .withDescription("image size is too large: " + size)
                                     .asRuntimeException()
                     );
                     return;
