@@ -15,10 +15,12 @@ public class LaptopService extends LaptopServiceGrpc.LaptopServiceImplBase {
     private static final Logger logger = Logger.getLogger(LaptopService.class.getName());
     private LaptopStore laptopStore;
     private ImageStore imageStore;
+    private RatingStore ratingStore;
 
-    public LaptopService(LaptopStore laptopStore, ImageStore imageStore) {
+    public LaptopService(LaptopStore laptopStore, ImageStore imageStore, RatingStore ratingStore) {
         this.laptopStore = laptopStore;
         this.imageStore = imageStore;
+        this.ratingStore = ratingStore;
     }
 
     @Override

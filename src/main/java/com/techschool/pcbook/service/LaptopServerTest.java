@@ -24,6 +24,7 @@ public class LaptopServerTest {
 
     private LaptopStore laptopStore;
     private  ImageStore imageStore;
+    private  RatingStore ratingStore;
     private LaptopServer server;
     private ManagedChannel channel;
 
@@ -33,7 +34,7 @@ public class LaptopServerTest {
         InProcessServerBuilder serverBuilder = InProcessServerBuilder.forName(serverName).directExecutor();
 
         laptopStore = new InMemoryLaptopStore();
-        server = new LaptopServer(serverBuilder, 0, laptopStore, imageStore);
+        server = new LaptopServer(serverBuilder, 0, laptopStore, imageStore, ratingStore);
         server.start();
 
         channel = grpcCleanup.register(
