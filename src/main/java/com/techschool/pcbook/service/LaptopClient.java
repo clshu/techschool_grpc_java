@@ -14,6 +14,7 @@ import io.grpc.stub.StreamObserver;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.util.Iterator;
+import java.util.Scanner;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -62,7 +63,7 @@ public class LaptopClient {
         logger.info("laptop create with ID:" + response.getId());
     }
 
-    private void SearchLaptop(LaptopFilter filter) {
+    public void searchLaptop(LaptopFilter filter) {
         logger.info("search started");
 
         SearchLaptopRequest request = SearchLaptopRequest.newBuilder().setFilter(filter).build();
@@ -73,18 +74,13 @@ public class LaptopClient {
             while (responseIterator.hasNext()) {
                 SearchLaptopResponse response = responseIterator.next();
                 Laptop laptop = response.getLaptop();
-                logLaptop(laptop);
+                logger.info("_ found: " + laptop.getId());
             }
         } catch (Exception e) {
             logger.log(Level.SEVERE, "request failed: " + e.getMessage());
             return;
         }
         logger.info("search completed");
-    }
-
-    private void logLaptop(Laptop laptop) {
-        logger.info("_ found: " + laptop.getId());
-        // May log more info later
     }
 
     public void uploadImage(String laptopID, String imagePath) {
@@ -152,42 +148,133 @@ public class LaptopClient {
 
         requestObserver.onCompleted();
 
+        awaitCountDownLatch(finishLatch);
+    }
+
+    public void rateLaptop(String[] laptopIDs, double[] scores) {
+        final CountDownLatch finishLatch = new CountDownLatch(1);
+
+        StreamObserver<RateLaptopRequest> requestObserver =
+                asyncStub
+                        .withDeadlineAfter(5, TimeUnit.SECONDS)
+                        .rateLaptop(new StreamObserver<RateLaptopResponse>() {
+                            @Override
+                            public void onNext(RateLaptopResponse response) {
+                                logger.info("received response: laptopID: "
+                                        + response.getLaptopId()
+                                        + " count: " + response.getRatedCount()
+                                        + " average: " + response.getAverageScore());
+                            }
+
+                            @Override
+                            public void onError(Throwable t) {
+                                logger.log(Level.SEVERE, "rate laptop failed. " + t.getMessage());
+                                finishLatch.countDown();
+                            }
+
+                            @Override
+                            public void onCompleted() {
+                                logger.info("rate laptop completed.");
+                                finishLatch.countDown();
+                            }
+                        });
+
+        int n = laptopIDs.length;
         try {
-            if (!finishLatch.await(1, TimeUnit.MINUTES)) {
-                logger.warning(("request cannot finish within 1 minute"));
+            for (int i = 0; i < n; i++) {
+                RateLaptopRequest request = RateLaptopRequest.newBuilder()
+                        .setLaptopId(laptopIDs[i])
+                        .setScore(scores[i])
+                        .build();
+                requestObserver.onNext(request);
+                logger.info("send rate-laptop request. id:" + laptopIDs[i] + " score: " + scores[i]);
+            }
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "sending request failed. " + e.getMessage());
+            requestObserver.onError(e);
+            return;
+        }
+
+        requestObserver.onCompleted();
+
+        awaitCountDownLatch(finishLatch);
+
+    }
+
+    private void awaitCountDownLatch(CountDownLatch latch) {
+        try {
+            if (!latch.await(1 , TimeUnit.MINUTES)) {
+                logger.warning("request cannot finish within 1 minute");
             }
         } catch (InterruptedException e) {
             logger.info("request is interrupted: " + e.getMessage());
         }
     }
 
+    public static void testCreateLaptop(LaptopClient client, Generator generator) {
+        Laptop laptop = generator.NewLaptop();
+        client.createLaptop(laptop);
+    }
+    public static void testSearchLaptop(LaptopClient client, Generator generator) {
+        for (int i = 0; i < 10; i++) {
+            Laptop laptop = generator.NewLaptop();
+            client.createLaptop(laptop);
+        }
+
+        Memory minRam = Memory.newBuilder()
+                .setValue(8)
+                .setUnit(Memory.Unit.GIGABYTE)
+                .build();
+
+        LaptopFilter filter = LaptopFilter.newBuilder()
+                .setMaxPriceUsd(3000)
+                .setMinCpuCores(4)
+                .setMinCpuGhz(2.5)
+                .setMinRam(minRam)
+                .build();
+
+        client.searchLaptop(filter);
+    }
+
+    public static void testUploadImage(LaptopClient client, Generator generator) {
+        Laptop laptop = generator.NewLaptop();
+        client.createLaptop(laptop);
+        client.uploadImage(laptop.getId(), "tmp/macbook-air-gold-2015-16.jpg");
+    }
+
+    public static void testRateLaptop(LaptopClient client, Generator generator) {
+        int n = 3;
+        String[] laptopIDs = new String[n];
+
+        for (int i = 0; i < n; i++) {
+            Laptop laptop = generator.NewLaptop();
+            laptopIDs[i] = laptop.getId();
+            client.createLaptop(laptop);
+        }
+
+        Scanner scanner = new Scanner(System.in);
+        while (true) {
+            logger.info("rate laptop (y/n)? ");
+            String answer = scanner.nextLine();
+            if (answer.toLowerCase().trim().equals("n")) {
+                break;
+            }
+
+            double[] scores = new double[n];
+            for (int i = 0; i < n; i++) {
+                scores[i] = generator.NewLaptopScore();
+            }
+            client.rateLaptop(laptopIDs, scores);
+        }
+    }
     public static void main(String[] args) {
         LaptopClient client = new LaptopClient("localhost", 50051);
 
         Generator generator = new Generator();
 
         try {
-//            for (int i = 0; i < 10; i++) {
-//                Laptop laptop = generator.NewLaptop();
-//                client.createLaptop(laptop);
-//            }
-//
-//            Memory minRam = Memory.newBuilder()
-//                    .setValue(8)
-//                    .setUnit(Memory.Unit.GIGABYTE)
-//                    .build();
-//
-//            LaptopFilter filter = LaptopFilter.newBuilder()
-//                    .setMaxPriceUsd(3000)
-//                    .setMinCpuCores(4)
-//                    .setMinCpuGhz(2.5)
-//                    .setMinRam(minRam)
-//                    .build();
-//
-//            client.SearchLaptop(filter);
-            Laptop laptop = generator.NewLaptop();
-            client.createLaptop(laptop);
-            client.uploadImage(laptop.getId(), "tmp/macbook-air-gold-2015-16.jpg");
+            testRateLaptop(client, generator);
+
         } finally {
             try {
                 client.shutdown();

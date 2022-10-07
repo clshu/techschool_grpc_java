@@ -136,6 +136,10 @@ public class Generator {
                 .setUpdatedAt(timestampNow())
                 .build();
     }
+
+    public double NewLaptopScore() {
+        return randomInt(1, 10);
+    }
     // private functions as random generator of objects
     private String randomCPUBrand() {
         return randomStringFromSet("Intel", "AMD", "ARM");
