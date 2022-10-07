@@ -1,20 +1,21 @@
 package com.techschool.pcbook.service;
 
-import com.techschool.pcbook.pb.CreateLaptopRequest;
-import com.techschool.pcbook.pb.CreateLaptopResponse;
-import com.techschool.pcbook.pb.Laptop;
-import com.techschool.pcbook.pb.LaptopServiceGrpc;
+import com.techschool.pcbook.pb.*;
 import com.techschool.pcbook.sample.Generator;
 import io.grpc.ManagedChannel;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
+import io.grpc.stub.StreamObserver;
 import io.grpc.testing.GrpcCleanupRule;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+
+import java.util.LinkedList;
+import java.util.List;
 
 import static org.junit.Assert.*;
 
@@ -34,6 +35,9 @@ public class LaptopServerTest {
         InProcessServerBuilder serverBuilder = InProcessServerBuilder.forName(serverName).directExecutor();
 
         laptopStore = new InMemoryLaptopStore();
+        imageStore = new DiskImageStore("tmp");
+        ratingStore = new InMemoryRatingStore();
+
         server = new LaptopServer(serverBuilder, 0, laptopStore, imageStore, ratingStore);
         server.start();
 
@@ -120,6 +124,67 @@ public class LaptopServerTest {
             response = stub.createLaptop(request);
         } catch (StatusRuntimeException e) {
             assertEquals(Status.Code.ALREADY_EXISTS, e.getStatus().getCode());
+        }
+    }
+
+    @Test
+    public void rateLaptop() throws Exception {
+        Generator generator = new Generator();
+        Laptop laptop = generator.NewLaptop();
+        laptopStore.Save(laptop);
+
+        LaptopServiceGrpc.LaptopServiceStub stub = LaptopServiceGrpc.newStub(channel);
+        RateLaptopResponseStreamObserver responseStreamObserver = new RateLaptopResponseStreamObserver();
+        StreamObserver<RateLaptopRequest> requestStreamObserver = stub.rateLaptop(responseStreamObserver);
+
+        double[] scores = {8, 7.5, 10};
+        double[] averages = {8, 7.75, 8.5};
+        int n = scores.length;
+
+        for (int i = 0; i < n; i++) {
+            RateLaptopRequest request = RateLaptopRequest.newBuilder()
+                    .setLaptopId(laptop.getId())
+                    .setScore(scores[i])
+                    .build();
+            requestStreamObserver.onNext(request);
+        }
+
+        requestStreamObserver.onCompleted();
+        assertNull(responseStreamObserver.err);
+        assertTrue(responseStreamObserver.complete);
+        assertEquals(n, responseStreamObserver.responses.size());
+
+        int idx = 0;
+        for (RateLaptopResponse response : responseStreamObserver.responses) {
+            assertEquals(laptop.getId(), response.getLaptopId());
+            assertEquals(idx + 1, response.getRatedCount());
+            assertEquals(averages[idx], response.getAverageScore(), 1e-9);
+            idx++;
+        }
+    }
+
+    private class RateLaptopResponseStreamObserver implements StreamObserver<RateLaptopResponse> {
+        public List<RateLaptopResponse> responses;
+        public Throwable err;
+        public boolean complete;
+
+        public RateLaptopResponseStreamObserver() {
+            responses = new LinkedList<>();
+        }
+
+        @Override
+        public void onNext(RateLaptopResponse response) {
+            responses.add(response);
+        }
+
+        @Override
+        public void onError(Throwable t) {
+            err = t;
+        }
+
+        @Override
+        public void onCompleted() {
+            complete = true;
         }
     }
 }
