@@ -206,4 +206,44 @@ public class LaptopService extends LaptopServiceGrpc.LaptopServiceImplBase {
             }
         };
     }
+
+    @Override
+    public StreamObserver<RateLaptopRequest> rateLaptop(StreamObserver<RateLaptopResponse> responseObserver) {
+        return new StreamObserver<RateLaptopRequest>() {
+            @Override
+            public void onNext(RateLaptopRequest request) {
+                String laptopID = request.getLaptopId();
+                double score = request.getScore();
+
+                Laptop found = laptopStore.Find(laptopID);
+                if (found == null) {
+                    responseObserver.onError(
+                            Status.NOT_FOUND
+                                    .withDescription("laptop ID doesn't exist. : " + laptopID)
+                                    .asRuntimeException()
+                    );
+                    return;
+                }
+
+                Rating rating = ratingStore.Add(laptopID, score);
+                RateLaptopResponse response = RateLaptopResponse.newBuilder()
+                        .setLaptopId(laptopID)
+                        .setRatedCount(rating.getCount())
+                        .setAverageScore(rating.getSum() / rating.getCount())
+                        .build();
+
+                responseObserver.onNext(response);
+            }
+
+            @Override
+            public void onError(Throwable t) {
+                logger.warning(t.getMessage());
+            }
+
+            @Override
+            public void onCompleted() {
+                responseObserver.onCompleted();
+            }
+        };
+    }
 }
