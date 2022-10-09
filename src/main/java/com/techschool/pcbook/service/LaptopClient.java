@@ -9,8 +9,13 @@ import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
+import io.grpc.netty.GrpcSslContexts;
+import io.grpc.netty.NettyChannelBuilder;
 import io.grpc.stub.StreamObserver;
+import io.netty.handler.ssl.SslContext;
 
+import javax.net.ssl.SSLException;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.util.Iterator;
@@ -30,6 +35,15 @@ public class LaptopClient {
     public LaptopClient(String host, int port) {
         channel = ManagedChannelBuilder.forAddress(host, port)
                 .usePlaintext()
+                .build();
+
+        blockingStub = LaptopServiceGrpc.newBlockingStub(channel);
+        asyncStub = LaptopServiceGrpc.newStub(channel);
+    }
+
+    public LaptopClient(String host, int port, SslContext sslContext) {
+        channel = NettyChannelBuilder.forAddress(host, port)
+                .sslContext(sslContext)
                 .build();
 
         blockingStub = LaptopServiceGrpc.newBlockingStub(channel);
@@ -267,8 +281,24 @@ public class LaptopClient {
             client.rateLaptop(laptopIDs, scores);
         }
     }
+
+    public static SslContext loadTLSCredentials() throws SSLException {
+        File serverCACertFile = new File("cert/ca-cert.pem");
+
+        return GrpcSslContexts.forClient()
+                .trustManager(serverCACertFile)
+                .build();
+    }
+
     public static void main(String[] args) {
-        LaptopClient client = new LaptopClient("localhost", 50051);
+        SslContext sslContext;
+        try {
+             sslContext = LaptopClient.loadTLSCredentials();
+        } catch (SSLException e) {
+            logger.warning("Cannot load TLS credentials: " + e.getMessage());
+            return;
+        }
+        LaptopClient client = new LaptopClient("localhost", 50051, sslContext);
 
         Generator generator = new Generator();
 

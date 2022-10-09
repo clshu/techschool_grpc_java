@@ -2,8 +2,15 @@ package com.techschool.pcbook.service;
 
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
+import io.grpc.netty.GrpcSslContexts;
+import io.grpc.netty.NettyServerBuilder;
 import io.grpc.protobuf.services.ProtoReflectionService;
+import io.netty.handler.ssl.ClientAuth;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
 
+import javax.net.ssl.SSLException;
+import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
@@ -16,6 +23,11 @@ public class LaptopServer {
 
     public LaptopServer(int port, LaptopStore laptopStore, ImageStore imageStore, RatingStore ratingStore) {
         this(ServerBuilder.forPort(port), port, laptopStore, imageStore, ratingStore);
+    }
+
+    public LaptopServer(int port, LaptopStore laptopStore, ImageStore imageStore, RatingStore ratingStore,
+                        SslContext sslContext) {
+        this(NettyServerBuilder.forPort(port).sslContext(sslContext), port, laptopStore, imageStore, ratingStore);
     }
 
     public LaptopServer(ServerBuilder serverBuilder, int port, LaptopStore laptopStore, ImageStore imageStore, RatingStore ratingStore) {
@@ -58,22 +70,39 @@ public class LaptopServer {
         }
     }
 
+    public static SslContext loadTLSCredentials() throws SSLException {
+        File serverCertFile = new File("cert/server-cert.pem");
+        File serverKeyFile = new File("cert/server-key.pem");
+
+        SslContextBuilder ctxBuilder = SslContextBuilder.forServer(serverCertFile, serverKeyFile)
+                .clientAuth(ClientAuth.NONE);
+
+        return GrpcSslContexts.configure(ctxBuilder).build();
+    }
     public static void main(String[] args) {
         InMemoryLaptopStore laptopStore = new InMemoryLaptopStore();
         DiskImageStore imageStore = new DiskImageStore("img");
         InMemoryRatingStore ratingStore = new InMemoryRatingStore();
 
-        LaptopServer server = new LaptopServer(50051, laptopStore, imageStore, ratingStore);
+        SslContext sslContext;
+        try {
+            sslContext = LaptopServer.loadTLSCredentials();
+        } catch (SSLException e) {
+            logger.warning("Cannot load credentials: " + e.getMessage());
+            return;
+        }
+
+        LaptopServer server = new LaptopServer(50051, laptopStore, imageStore, ratingStore, sslContext);
         try {
             server.start();
         } catch(IOException e) {
-            System.err.println("Server start failed: IOException");
+            logger.warning("Server start failed: IOException");
             return;
         }
         try {
             server.blockUntilShutdown();
         } catch(InterruptedException e) {
-            System.err.println(e.getMessage());
+            logger.warning(e.getMessage());
         }
 
     }
