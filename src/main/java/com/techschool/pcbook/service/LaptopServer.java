@@ -73,9 +73,11 @@ public class LaptopServer {
     public static SslContext loadTLSCredentials() throws SSLException {
         File serverCertFile = new File("cert/server-cert.pem");
         File serverKeyFile = new File("cert/server-key.pem");
+        File clientCACertFile = new File("cert/ca-cert.pem");
 
         SslContextBuilder ctxBuilder = SslContextBuilder.forServer(serverCertFile, serverKeyFile)
-                .clientAuth(ClientAuth.NONE);
+                .clientAuth(ClientAuth.REQUIRE)
+                .trustManager(clientCACertFile);
 
         return GrpcSslContexts.configure(ctxBuilder).build();
     }

@@ -284,8 +284,11 @@ public class LaptopClient {
 
     public static SslContext loadTLSCredentials() throws SSLException {
         File serverCACertFile = new File("cert/ca-cert.pem");
+        File clientCertFile = new File("cert/client-cert.pem");
+        File clientKeyFile = new File("cert/client-key.pem");
 
         return GrpcSslContexts.forClient()
+                .keyManager(clientCertFile, clientKeyFile)
                 .trustManager(serverCACertFile)
                 .build();
     }
